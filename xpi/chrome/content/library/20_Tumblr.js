@@ -462,9 +462,11 @@ Tumblr.Regular = {
 	
 	convertToForm : function(ps){
 		return {
-			'post[type]' : ps.type,
-			'post[one]'  : ps.item,
-			'post[two]'  : joinText([getFlavor(ps.body, 'html'), ps.description], '\n\n'),
+			'post[type]'      : ps.type,
+			'post[one]'       : ps.item,
+			'post[two]'       : joinText([getFlavor(ps.body, 'html'), ps.description], '\n\n'),
+			'send_to_twitter' : 1, // Twitterへクロスポスト
+			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -490,13 +492,15 @@ Tumblr.Photo = {
 	
 	convertToForm : function(ps){
 		var form = {
-			'post[type]'  : ps.type,
-			't'           : ps.item,
-			'u'           : ps.pageUrl,
-			'post[two]'   : joinText([
+			'post[type]'      : ps.type,
+			't'               : ps.item,
+			'u'               : ps.pageUrl,
+			'post[two]'       : joinText([
 				(ps.item? ps.item.link(ps.pageUrl) : '') + (ps.author? ' (via ' + ps.author.link(ps.authorUrl) + ')' : ''), 
 				ps.description], '\n\n'),
-			'post[three]' : ps.pageUrl,
+			'post[three]'     : ps.pageUrl,
+			'send_to_twitter' : 1, // Twitterへクロスポスト
+			'custom_tweet'    : joinText([ps.item, ps.author? '(via ' + ps.author + ')' : '', ps.description], ' ').truncate(119, '\u2026') + ' [URL]',
 		};
 		ps.file? (form['images[o1]'] = ps.file) : (form['photo_src'] = ps.itemUrl);
 		
@@ -525,11 +529,13 @@ Tumblr.Video = {
 	
 	convertToForm : function(ps){
 		return {
-			'post[type]' : ps.type,
-			'post[one]'  : getFlavor(ps.body, 'html') || ps.itemUrl,
-			'post[two]'  : joinText([
+			'post[type]'      : ps.type,
+			'post[one]'       : getFlavor(ps.body, 'html') || ps.itemUrl,
+			'post[two]'       : joinText([
 				(ps.item? ps.item.link(ps.pageUrl) : '') + (ps.author? ' (via ' + ps.author.link(ps.authorUrl) + ')' : ''), 
 				ps.description], '\n\n'),
+			'send_to_twitter' : 1, // Twitterへクロスポスト
+			'custom_tweet'    : joinText([ps.item, ps.author? '(via ' + ps.author + ')' : '', ps.description], ' ').truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -546,10 +552,12 @@ Tumblr.Link = {
 	convertToForm : function(ps){
 		var thumb = getPref('thumbnailTemplate').replace(RegExp('{url}', 'g'), ps.pageUrl);
 		return {
-			'post[type]'  : ps.type,
-			'post[one]'   : ps.item,
-			'post[two]'   : ps.itemUrl,
-			'post[three]' : joinText([thumb, getFlavor(ps.body, 'html'), ps.description], '\n\n'),
+			'post[type]'      : ps.type,
+			'post[one]'       : ps.item,
+			'post[two]'       : ps.itemUrl,
+			'post[three]'     : joinText([thumb, getFlavor(ps.body, 'html'), ps.description], '\n\n'),
+			'send_to_twitter' : 1, // Twitterへクロスポスト
+			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -564,9 +572,11 @@ Tumblr.Conversation = {
 	
 	convertToForm : function(ps){
 		return {
-			'post[type]' : ps.type,
-			'post[one]'  : ps.item,
-			'post[two]'  : joinText([getFlavor(ps.body, 'html'), ps.description], '\n\n'),
+			'post[type]'      : ps.type,
+			'post[one]'       : ps.item,
+			'post[two]'       : joinText([getFlavor(ps.body, 'html'), ps.description], '\n\n'),
+			'send_to_twitter' : 1, // Twitterへクロスポスト
+			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -581,9 +591,11 @@ Tumblr.Quote = {
 	
 	convertToForm : function(ps){
 		return {
-			'post[type]' : ps.type,
-			'post[one]'  : getFlavor(ps.body, 'html'),
-			'post[two]'  : joinText([(ps.item? ps.item.link(ps.pageUrl) : ''), ps.description], '\n\n'),
+			'post[type]'      : ps.type,
+			'post[one]'       : getFlavor(ps.body, 'html'),
+			'post[two]'       : joinText([(ps.item? ps.item.link(ps.pageUrl) : ''), ps.description], '\n\n'),
+			'send_to_twitter' : 1, // Twitterへクロスポスト
+			'custom_tweet'    : joinText([ps.body.truncate(105, '\u2026').wrap('"'), joinText([ps.item, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }

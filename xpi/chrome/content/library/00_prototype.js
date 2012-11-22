@@ -53,7 +53,12 @@ update(String.prototype, {
 	trim : function(){
 		return this.replace(/^\s+|\s+$/g, '');
 	},
-	
+
+	truncate : function(len, ellipsis){
+		ellipsis = ellipsis || '';
+		return (this.length <= len) ? this : (this.substr(0, len - ellipsis.length) + ellipsis)
+	},
+
 	wrap : function(prefix, suffix){
 		suffix = suffix || prefix;
 		return prefix + this + suffix;
