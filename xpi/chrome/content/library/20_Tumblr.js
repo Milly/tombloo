@@ -7,7 +7,7 @@ var Tumblr = update({}, AbstractSessionService, {
 	MEDIA_URL : 'http://media.tumblr.com/',
 	TUMBLR_URL : 'http://www.tumblr.com/',
 	PAGE_LIMIT : 50,
-	
+
 	/**
 	 * 各Tumblrの基本情報(総件数/タイトル/タイムゾーン/名前)を取得する。
 	 *
@@ -34,14 +34,14 @@ var Tumblr = update({}, AbstractSessionService, {
 			};
 		});
 	},
-	
+
 	/**
 	 * Tumblr APIからポストデータを取得する。
 	 *
 	 * @param {String} user ユーザー名。
 	 * @param {optional String} type ポストタイプ。未指定の場合、全タイプとなる。
 	 * @param {String} count 先頭から何件を取得するか。
-	 * @param {Function} handler 
+	 * @param {Function} handler
 	 *        各ページ個別処理関数。段階的に処理を行う場合に指定する。
 	 *        ページ内の全ポストが渡される。
 	 * @return {Deferred} 取得した全ポストが渡される。
@@ -50,7 +50,7 @@ var Tumblr = update({}, AbstractSessionService, {
 		// FIXME: ストリームにする
 		var pages = Tumblr._splitRequests(count);
 		var result = [];
-		
+
 		var d = succeed();
 		d.addCallback(function(){
 			// 全ページを繰り返す
@@ -64,23 +64,23 @@ var Tumblr = update({}, AbstractSessionService, {
 					},
 				}).addCallback(function(res){
 					var xml = convertToXML(res.responseText);
-					
+
 					// 全ポストを繰り返す
 					var posts = map(function(post){
 						var info = {
 							user : user,
-							id   : ''+ post.@id, 
-							url  : ''+ post.@url, 
-							date : ''+ post.@date, 
-							type : ''+ post.@type, 
-							tags : map(function(tag){return ''+tag}, post.tag), 
+							id   : ''+ post.@id,
+							url  : ''+ post.@url,
+							date : ''+ post.@date,
+							type : ''+ post.@type,
+							tags : map(function(tag){return ''+tag}, post.tag),
 						};
-						
+
 						return Tumblr[info.type.capitalize()].convertToModel(post, info);
 					}, xml.posts.post);
-					
+
 					result = result.concat(posts);
-					
+
 					return handler && handler(posts, (pageNum * Tumblr.PAGE_LIMIT));
 				}).addCallback(wait, 1); // ウェイト
 			});
@@ -92,10 +92,10 @@ var Tumblr = update({}, AbstractSessionService, {
 		d.addCallback(function(){
 			return result;
 		});
-		
+
 		return d;
 	},
-	
+
 	/**
 	 * API読み込みページリストを作成する。
 	 * TumblrのAPIは120件データがあるとき、100件目から50件を読もうとすると、
@@ -111,10 +111,10 @@ var Tumblr = update({}, AbstractSessionService, {
 			res.push([i*limit, limit]);
 		}
 		count%limit && (res[res.length-1][1] = count%limit);
-		
+
 		return res;
 	},
-	
+
 	/**
 	 * ポストを削除する。
 	 *
@@ -135,7 +135,7 @@ var Tumblr = update({}, AbstractSessionService, {
 			});
 		});
 	},
-	
+
 	/**
 	 * reblog情報を取り除く。
 	 *
@@ -145,7 +145,7 @@ var Tumblr = update({}, AbstractSessionService, {
 	trimReblogInfo : function(form){
 		if(!getPref('trimReblogInfo'))
 		 return;
-		 
+
 		function trimQuote(entry){
 			entry = entry.replace(/<p><\/p>/g, '').replace(/<p><a[^<]+<\/a>:<\/p>/g, '');
 			entry = (function(all, contents){
@@ -153,7 +153,7 @@ var Tumblr = update({}, AbstractSessionService, {
 			})(null, entry);
 			return entry.trim();
 		}
-		
+
 		switch(form['post[type]']){
 		case 'link':
 			form['post[three]'] = trimQuote(form['post[three]']);
@@ -167,10 +167,10 @@ var Tumblr = update({}, AbstractSessionService, {
 			form['post[two]'] = form['post[two]'].replace(/ \(via <a.*?<\/a>\)/g, '').trim();
 			break;
 		}
-		
+
 		return form;
 	},
-	
+
 	/**
 	 * ポスト可能かをチェックする。
 	 *
@@ -180,7 +180,7 @@ var Tumblr = update({}, AbstractSessionService, {
 	check : function(ps){
 		return (/(regular|photo|quote|link|conversation|video)/).test(ps.type);
 	},
-	
+
 	/**
 	 * 新規エントリーをポストする。
 	 *
@@ -193,14 +193,14 @@ var Tumblr = update({}, AbstractSessionService, {
 		return this.postForm(function(){
 			return self.getForm(endpoint).addCallback(function(form){
 				update(form, Tumblr[ps.type.capitalize()].convertToForm(ps));
-				
+
 				self.appendTags(form, ps);
-				
+
 				return request(endpoint, {sendContent : form});
 			});
 		});
 	},
-	
+
 	/**
 	 * ポストフォームを取得する。
 	 * reblogおよび新規エントリーのどちらでも利用できる。
@@ -215,19 +215,19 @@ var Tumblr = update({}, AbstractSessionService, {
 			var form = formContents(doc);
 			delete form.preview_post;
 			form.redirect_to = Tumblr.TUMBLR_URL+'dashboard';
-			
+
 			if(form.reblog_post_id){
 				self.trimReblogInfo(form);
-				
+
 				// Tumblrから他サービスへポストするため画像URLを取得しておく
 				if(form['post[type]']=='photo')
 					form.image = $x('id("edit_post")//img[contains(@src, "media.tumblr.com/") or contains(@src, "data.tumblr.com/")]/@src', doc);
 			}
-			
+
 			return form;
 		});
 	},
-	
+
 	/**
 	 * フォームへタグとプライベートを追加する。
 	 *
@@ -237,12 +237,12 @@ var Tumblr = update({}, AbstractSessionService, {
 	appendTags : function(form, ps){
 		if(ps.private!=null)
 			form['post[state]'] = (ps.private)? 'private' : 0;
-		
+
 		return update(form, {
 			'post[tags]' : (ps.tags && ps.tags.length)? joinText(ps.tags, ',') : '',
 		});
 	},
-	
+
 	/**
 	 * reblogする。
 	 * Tombloo.Service.extractors.ReBlogの各抽出メソッドを使いreblog情報を抽出できる。
@@ -258,17 +258,17 @@ var Tumblr = update({}, AbstractSessionService, {
 		})).forEach(function([name, value]){
 			if(!value)
 				return;
-			
+
 			form[name] += '\n\n' + value;
 		});
-		
+
 		this.appendTags(form, ps);
-		
+
 		return this.postForm(function(){
 			return request(ps.favorite.endpoint, {sendContent : form})
 		});
 	},
-	
+
 	/**
 	 * フォームをポストする。
 	 * 新規エントリーとreblogのエラー処理をまとめる。
@@ -285,32 +285,32 @@ var Tumblr = update({}, AbstractSessionService, {
 			switch(true){
 			case /dashboard/.test(url):
 				return;
-			
+
 			case /login/.test(url):
 				throw new Error(getMessage('error.notLoggedin'));
-			
+
 			default:
 				// このチェックをするためリダイレクトを追う必要がある
 				// You've used 100% of your daily photo uploads. You can upload more tomorrow.
 				if(res.responseText.match('more tomorrow'))
 					throw new Error("You've exceeded your daily post limit.");
-				
+
 				var doc = convertToHTMLDocument(res.responseText);
 				throw new Error(convertToPlainText(doc.getElementById('errors')));
 			}
 		});
 		return d;
 	},
-	
+
 	openTab : function(ps){
 		if(ps.type == 'reblog')
 			return addTab(Tumblr.TUMBLR_URL + 'reblog/' + ps.token.id + '/' + ps.token.token +'?redirect_to='+encodeURIComponent(ps.pageUrl));
-		
+
 		var form = Tumblr[ps.type.capitalize()].convertToForm(ps);
 		return addTab(Tumblr.TUMBLR_URL+'new/' + ps.type).addCallback(function(win){
 			withDocument(win.document, function(){
 				populateForm(currentDocument().getElementById('edit_post'), form);
-				
+
 				var setDisplay = function(id, style){
 					currentDocument().getElementById(id).style.display = style;
 				}
@@ -318,10 +318,10 @@ var Tumblr = update({}, AbstractSessionService, {
 				case 'photo':
 					setDisplay('photo_upload', 'none');
 					setDisplay('photo_url', 'block');
-					
+
 					setDisplay('add_photo_link', 'none');
 					setDisplay('photo_link', 'block');
-					
+
 					break;
 				case 'link':
 					setDisplay('add_link_description', 'none');
@@ -331,11 +331,11 @@ var Tumblr = update({}, AbstractSessionService, {
 			});
 		});
 	},
-	
+
 	getPasswords : function(){
 		return getPasswords('http://www.tumblr.com');
 	},
-	
+
 	login : function(user, password){
 		var LOGIN_FORM_URL = 'https://www.tumblr.com/login';
 		var LOGIN_EXEC_URL = 'https://www.tumblr.com/svc/account/register';
@@ -357,15 +357,15 @@ var Tumblr = update({}, AbstractSessionService, {
 			});
 		});
 	},
-	
+
 	logout : function(){
 		return request(Tumblr.TUMBLR_URL+'logout');
 	},
-	
+
 	getAuthCookie : function(){
 		return getCookieString('www.tumblr.com');
 	},
-	
+
 	/**
 	 * ログイン中のユーザーを取得する。
 	 * 結果はキャッシュされ、再ログインまで再取得は行われない。
@@ -377,11 +377,11 @@ var Tumblr = update({}, AbstractSessionService, {
 		switch (this.updateSession()){
 		case 'none':
 			return succeed('');
-			
+
 		case 'same':
 			if(this.user)
 				return succeed(this.user);
-			
+
 		case 'changed':
 			var self = this;
 			return request(Tumblr.TUMBLR_URL+'preferences').addCallback(function(res){
@@ -390,7 +390,7 @@ var Tumblr = update({}, AbstractSessionService, {
 			});
 		}
 	},
-	
+
 	/**
 	 * ログイン中のユーザーIDを取得する。
 	 *
@@ -400,11 +400,11 @@ var Tumblr = update({}, AbstractSessionService, {
 		switch (this.updateSession()){
 		case 'none':
 			return succeed('');
-			
+
 		case 'same':
 			if(this.id)
 				return succeed(this.id);
-			
+
 		case 'changed':
 			var self = this;
 			return request(Tumblr.TUMBLR_URL+'customize').addCallback(function(res){
@@ -413,7 +413,7 @@ var Tumblr = update({}, AbstractSessionService, {
 			});
 		}
 	},
-	
+
 	/**
 	 * ポストや削除に使われるトークン(form_key)を取得する。
 	 * 結果はキャッシュされ、再ログインまで再取得は行われない。
@@ -424,11 +424,11 @@ var Tumblr = update({}, AbstractSessionService, {
 		switch (this.updateSession()){
 		case 'none':
 			throw new Error(getMessage('error.notLoggedin'));
-			
+
 		case 'same':
 			if(this.token)
 				return succeed(this.token);
-			
+
 		case 'changed':
 			var self = this;
 			return request(Tumblr.TUMBLR_URL+'new/text').addCallback(function(res){
@@ -437,7 +437,7 @@ var Tumblr = update({}, AbstractSessionService, {
 			});
 		}
 	},
-	
+
 	getTumblelogs : function(){
 		return request(Tumblr.TUMBLR_URL+'new/text').addCallback(function(res){
 			var doc = convertToHTMLDocument(res.responseText);
@@ -459,14 +459,15 @@ Tumblr.Regular = {
 			title : ''+ post['regular-title'],
 		});
 	},
-	
+
 	convertToForm : function(ps){
 		return {
 			'post[type]'      : ps.type,
 			'post[one]'       : ps.item,
 			'post[two]'       : joinText([getFlavor(ps.body, 'html'), ps.description], '\n\n'),
 			'send_to_twitter' : 1, // Twitterへクロスポスト
-			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
+			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ')
+				.trimTag().truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -476,37 +477,38 @@ Tumblr.Photo = {
 		var photoUrl = post['photo-url'];
 		var photoUrl500 = ''+photoUrl.(@['max-width'] == 500);
 		var image = Tombloo.Photo.getImageInfo(photoUrl500);
-		
+
 		return update(info, {
 			photoUrl500   : photoUrl500,
 			photoUrl400   : ''+ photoUrl.(@['max-width'] == 400),
 			photoUrl250   : ''+ photoUrl.(@['max-width'] == 250),
 			photoUrl100   : ''+ photoUrl.(@['max-width'] == 100),
 			photoUrl75    : ''+ photoUrl.(@['max-width'] == 75),
-			
+
 			body          : ''+ post['photo-caption'],
 			imageId       : image.id,
 			extension     : image.extension,
 		});
 	},
-	
+
 	convertToForm : function(ps){
 		var form = {
 			'post[type]'      : ps.type,
 			't'               : ps.item,
 			'u'               : ps.pageUrl,
 			'post[two]'       : joinText([
-				(ps.item? ps.item.link(ps.pageUrl) : '') + (ps.author? ' (via ' + ps.author.link(ps.authorUrl) + ')' : ''), 
+				(ps.item? ps.item.link(ps.pageUrl) : '') + (ps.author? ' (via ' + ps.author.link(ps.authorUrl) + ')' : ''),
 				ps.description], '\n\n'),
 			'post[three]'     : ps.pageUrl,
 			'send_to_twitter' : 1, // Twitterへクロスポスト
-			'custom_tweet'    : joinText([ps.item, ps.author? '(via ' + ps.author + ')' : '', ps.description], ' ').truncate(119, '\u2026') + ' [URL]',
+			'custom_tweet'    : joinText([ps.item, ps.author? '(via ' + ps.author + ')' : '', ps.description], ' ')
+				.trimTag().truncate(119, '\u2026') + ' [URL]',
 		};
 		ps.file? (form['images[o1]'] = ps.file) : (form['photo_src'] = ps.itemUrl);
-		
+
 		return form;
 	},
-	
+
 	/**
 	 * 画像をダウンロードする。
 	 *
@@ -526,16 +528,17 @@ Tumblr.Video = {
 			player  : ''+ post['video-player'],
 		});
 	},
-	
+
 	convertToForm : function(ps){
 		return {
 			'post[type]'      : ps.type,
 			'post[one]'       : getFlavor(ps.body, 'html') || ps.itemUrl,
 			'post[two]'       : joinText([
-				(ps.item? ps.item.link(ps.pageUrl) : '') + (ps.author? ' (via ' + ps.author.link(ps.authorUrl) + ')' : ''), 
+				(ps.item? ps.item.link(ps.pageUrl) : '') + (ps.author? ' (via ' + ps.author.link(ps.authorUrl) + ')' : ''),
 				ps.description], '\n\n'),
 			'send_to_twitter' : 1, // Twitterへクロスポスト
-			'custom_tweet'    : joinText([ps.item, ps.author? '(via ' + ps.author + ')' : '', ps.description], ' ').truncate(119, '\u2026') + ' [URL]',
+			'custom_tweet'    : joinText([ps.item, ps.author? '(via ' + ps.author + ')' : '', ps.description], ' ')
+				.trimTag().truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -548,7 +551,7 @@ Tumblr.Link = {
 			body   : ''+ post['link-description'],
 		});
 	},
-	
+
 	convertToForm : function(ps){
 		var thumb = getPref('thumbnailTemplate').replace(RegExp('{url}', 'g'), ps.pageUrl);
 		return {
@@ -557,7 +560,8 @@ Tumblr.Link = {
 			'post[two]'       : ps.itemUrl,
 			'post[three]'     : joinText([thumb, getFlavor(ps.body, 'html'), ps.description], '\n\n'),
 			'send_to_twitter' : 1, // Twitterへクロスポスト
-			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
+			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ')
+				.trimTag().truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -569,14 +573,15 @@ Tumblr.Conversation = {
 			body  : ''+ post['conversation-text'],
 		});
 	},
-	
+
 	convertToForm : function(ps){
 		return {
 			'post[type]'      : ps.type,
 			'post[one]'       : ps.item,
 			'post[two]'       : joinText([getFlavor(ps.body, 'html'), ps.description], '\n\n'),
 			'send_to_twitter' : 1, // Twitterへクロスポスト
-			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
+			'custom_tweet'    : joinText([ps.item, joinText([ps.body, ps.description], ' ')], ' - ')
+				.trimTag().truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
@@ -588,14 +593,17 @@ Tumblr.Quote = {
 			source : ''+ post['quote-source'],
 		});
 	},
-	
+
 	convertToForm : function(ps){
 		return {
 			'post[type]'      : ps.type,
 			'post[one]'       : getFlavor(ps.body, 'html'),
 			'post[two]'       : joinText([(ps.item? ps.item.link(ps.pageUrl) : ''), ps.description], '\n\n'),
 			'send_to_twitter' : 1, // Twitterへクロスポスト
-			'custom_tweet'    : joinText([ps.body.truncate(105, '\u2026').wrap('"'), joinText([ps.item, ps.description], ' ')], ' - ').truncate(119, '\u2026') + ' [URL]',
+			'custom_tweet'    : joinText([
+				ps.body.trimTag().truncate(105, '\u2026').wrap('"'),
+				joinText([ps.item, ps.description], ' ')], ' - ')
+				.trimTag().truncate(119, '\u2026') + ' [URL]',
 		};
 	},
 }
